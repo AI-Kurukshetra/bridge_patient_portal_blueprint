@@ -5,6 +5,10 @@ export type ConversationWithMessages = Row<"conversations"> & {
   messages: Row<"messages">[];
 };
 
+export type DocumentWithAccess = Row<"documents"> & {
+  signedUrl: string | null;
+};
+
 export type PortalData = {
   profile: Row<"profiles"> | null;
   patient: Row<"patients"> | null;
@@ -16,7 +20,7 @@ export type PortalData = {
   labResults: Row<"lab_results">[];
   prescriptions: Row<"prescriptions">[];
   conversations: ConversationWithMessages[];
-  documents: Row<"documents">[];
+  documents: DocumentWithAccess[];
   invoices: Row<"invoices">[];
   payments: Row<"payments">[];
   notifications: Row<"notifications">[];
@@ -82,6 +86,23 @@ export async function getPortalData(): Promise<PortalData | null> {
   ]);
 
   const messages = messagesRes.data ?? [];
+  const documents = await Promise.all(
+    (documentsRes.data ?? []).map(async (document) => {
+      if (!document.storage_path) {
+        return { ...document, signedUrl: null };
+      }
+
+      const { data } = await supabase.storage
+        .from("patient-documents")
+        .createSignedUrl(document.storage_path, 3600);
+
+      return {
+        ...document,
+        signedUrl: data?.signedUrl ?? null,
+      };
+    }),
+  );
+
   const conversations = (conversationsRes.data ?? []).map((conversation) => ({
     ...conversation,
     messages: messages.filter((message) => message.conversation_id === conversation.id),
@@ -98,7 +119,7 @@ export async function getPortalData(): Promise<PortalData | null> {
     labResults: labsRes.data ?? [],
     prescriptions: prescriptionsRes.data ?? [],
     conversations,
-    documents: documentsRes.data ?? [],
+    documents,
     invoices: invoicesRes.data ?? [],
     payments: paymentsRes.data ?? [],
     notifications: notifications ?? [],
@@ -106,4 +127,3 @@ export async function getPortalData(): Promise<PortalData | null> {
     recentActivities: recentActivities ?? [],
   };
 }
-

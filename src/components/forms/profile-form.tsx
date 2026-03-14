@@ -46,9 +46,8 @@ export function ProfileForm({ initialValues }: { initialValues: ProfileInput }) 
       <label className="grid gap-2 text-sm text-slate-200"><span>Policy number</span><input className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white" {...form.register("insurancePolicyNo")} /></label>
       <label className="grid gap-2 text-sm text-slate-200"><span>Group number</span><input className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white" {...form.register("insuranceGroupNo")} /></label>
       <label className="grid gap-2 text-sm text-slate-200"><span>Insurance valid until</span><input type="date" className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white" {...form.register("insuranceValidUntil")} /></label>
-      <div className="grid gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-slate-200 md:col-span-2"><label className="flex items-center justify-between gap-3"><span>MFA reminders enabled</span><input type="checkbox" {...form.register("isMfaEnabled")} /></label><label className="flex items-center justify-between gap-3"><span>Advance directive on file</span><input type="checkbox" {...form.register("advanceDirective")} /></label><label className="flex items-center justify-between gap-3"><span>Organ donor</span><input type="checkbox" {...form.register("organDonor")} /></label></div>
+      <div className="grid gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-slate-200 md:col-span-2"><label className="flex items-center justify-between gap-3"><span>Advance directive on file</span><input type="checkbox" {...form.register("advanceDirective")} /></label><label className="flex items-center justify-between gap-3"><span>Organ donor</span><input type="checkbox" {...form.register("organDonor")} /></label></div>
       <div className="md:col-span-2"><button type="submit" disabled={isPending} className="rounded-2xl bg-cyan-400 px-5 py-3 font-medium text-slate-950 transition hover:bg-cyan-300 disabled:opacity-60">{isPending ? "Saving..." : "Save profile"}</button></div>
     </form>
   );
 }
-

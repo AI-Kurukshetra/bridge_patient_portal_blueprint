@@ -28,6 +28,7 @@ export async function createDocumentAction(payload: DocumentInput): Promise<Acti
     uploaded_by: user.id,
     title: parsed.data.title,
     category: parsed.data.category,
+    storage_path: parsed.data.storagePath,
     mime_type: parsed.data.mimeType || null,
     file_size: parsed.data.fileSize ?? null,
   });
@@ -37,6 +38,5 @@ export async function createDocumentAction(payload: DocumentInput): Promise<Acti
   }
 
   revalidatePath("/documents");
-  return { success: true, message: "Document metadata saved" };
+  return { success: true, message: "Document uploaded" };
 }
-

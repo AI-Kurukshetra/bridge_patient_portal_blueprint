@@ -26,7 +26,6 @@ export async function updateProfileAction(payload: ProfileInput): Promise<Action
     gender: parsed.data.gender ?? null,
     preferred_lang: parsed.data.preferredLang,
     timezone: parsed.data.timezone,
-    is_mfa_enabled: parsed.data.isMfaEnabled,
   };
 
   const patientUpdate = {
@@ -59,3 +58,25 @@ export async function updateProfileAction(payload: ProfileInput): Promise<Action
   return { success: true, message: "Profile updated" };
 }
 
+export async function syncMfaStatusAction(isEnabled: boolean): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { data: authData } = await supabase.auth.getUser();
+  const user = authData.user;
+
+  if (!user) {
+    return { error: { _form: ["Unauthorized"] } };
+  }
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({ is_mfa_enabled: isEnabled })
+    .eq("id", user.id);
+
+  if (error) {
+    return { error: { _form: [error.message] } };
+  }
+
+  revalidatePath("/profile");
+  revalidatePath("/mfa");
+  return { success: true };
+}

@@ -18,10 +18,8 @@ export const profileSchema = z.object({
   insuranceValidUntil: z.string().optional().or(z.literal("")),
   preferredLang: z.string().max(10),
   timezone: z.string().max(50),
-  isMfaEnabled: z.boolean(),
   advanceDirective: z.boolean(),
   organDonor: z.boolean(),
 });
 
 export type ProfileInput = z.infer<typeof profileSchema>;
-

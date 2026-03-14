@@ -1,4 +1,5 @@
 ﻿import { createClient } from "@/lib/supabase/server";
+import { normalizeRole } from "@/lib/auth/roles";
 import type { Row } from "@/types/database";
 
 export type ConversationWithMessages = Row<"conversations"> & {
@@ -37,10 +38,14 @@ export async function getPortalData(): Promise<PortalData | null> {
     return null;
   }
 
-  await supabase.rpc("seed_demo_data_for_current_user");
+  const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single();
+  const role = normalizeRole(profile?.role);
 
-  const [{ data: profile }, { data: patient }, { data: providers }, { data: notifications }, { data: consents }, { data: recentActivities }] = await Promise.all([
-    supabase.from("profiles").select("*").eq("id", user.id).single(),
+  if (role === "patient") {
+    await supabase.rpc("seed_demo_data_for_current_user");
+  }
+
+  const [{ data: patient }, { data: providers }, { data: notifications }, { data: consents }, { data: recentActivities }] = await Promise.all([
     supabase.from("patients").select("*").eq("profile_id", user.id).single(),
     supabase.from("providers").select("*").order("last_name"),
     supabase.from("notifications").select("*").order("created_at", { ascending: false }),

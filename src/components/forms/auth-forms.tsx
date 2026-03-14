@@ -50,7 +50,7 @@ export function LoginForm() {
         return;
       }
       toast.success("Welcome back");
-      router.push("/dashboard");
+      router.push(result.data?.redirectTo ?? "/dashboard");
       router.refresh();
     });
   };
@@ -90,11 +90,7 @@ export function RegisterForm() {
         return;
       }
       toast.success(result.message ?? "Account created");
-      if (result.message?.includes("Redirecting")) {
-        router.push("/dashboard");
-      } else {
-        router.push("/login");
-      }
+      router.push(result.data?.redirectTo ?? "/login");
       router.refresh();
     });
   };

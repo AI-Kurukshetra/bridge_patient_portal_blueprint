@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { type ActionResult, getAppUrl } from "@/lib/utils";
+import { getDefaultRouteForRole, normalizeRole } from "@/lib/auth/roles";
 import {
   forgotPasswordSchema,
   loginSchema,
@@ -14,7 +15,7 @@ import {
   type ResetPasswordInput,
 } from "@/lib/validations/auth";
 
-export async function loginAction(payload: LoginInput): Promise<ActionResult> {
+export async function loginAction(payload: LoginInput): Promise<ActionResult<{ redirectTo: string }>> {
   const parsed = loginSchema.safeParse(payload);
   if (!parsed.success) {
     return { error: parsed.error.flatten().fieldErrors };
@@ -30,12 +31,25 @@ export async function loginAction(payload: LoginInput): Promise<ActionResult> {
     return { error: { _form: [error.message] } };
   }
 
-  await supabase.rpc("seed_demo_data_for_current_user");
-  revalidatePath("/dashboard", "layout");
-  return { success: true };
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { data: profile } = user
+    ? await supabase.from("profiles").select("role").eq("id", user.id).single()
+    : { data: null };
+
+  const role = normalizeRole(profile?.role);
+  if (role === "patient") {
+    await supabase.rpc("seed_demo_data_for_current_user");
+  }
+
+  const redirectTo = getDefaultRouteForRole(role);
+  revalidatePath("/", "layout");
+  return { success: true, data: { redirectTo } };
 }
 
-export async function registerAction(payload: RegisterInput): Promise<ActionResult> {
+export async function registerAction(payload: RegisterInput): Promise<ActionResult<{ redirectTo: string }>> {
   const parsed = registerSchema.safeParse(payload);
   if (!parsed.success) {
     return { error: parsed.error.flatten().fieldErrors };
@@ -64,6 +78,7 @@ export async function registerAction(payload: RegisterInput): Promise<ActionResu
   revalidatePath("/dashboard", "layout");
   return {
     success: true,
+    data: { redirectTo: data.session ? "/dashboard" : "/login" },
     message: data.session
       ? "Account created. Redirecting to your portal."
       : "Account created. Check your email to confirm your account.",

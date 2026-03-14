@@ -9,7 +9,7 @@
     "start": "next start",
     "start:3000": "next start --port 3000",
     "lint": "eslint .",
-    "type-check": "next typegen && tsc --noEmit",
+    "type-check": "next typegen && tsc --noEmit -p tsconfig.typecheck.json",
     "test": "vitest",
     "test:run": "vitest run",
     "test:e2e": "npm run build && playwright test"

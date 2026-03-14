@@ -3,11 +3,17 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { Bell, CalendarDays, FileStack, FlaskConical, LayoutDashboard, Menu, MessageSquareText, Pill, ReceiptText, ShieldCheck, UserRound, X } from "lucide-react";
+import { Bell, CalendarDays, FileStack, FlaskConical, LayoutDashboard, Menu, MessageSquareText, Pill, ReceiptText, ShieldCheck, UserRound, UsersRound, X } from "lucide-react";
 import { logoutAction } from "@/lib/actions/auth";
 import { cn, getInitials } from "@/lib/utils";
 
-const navItems = [
+type NavItem = {
+  href: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+};
+
+const patientNavItems: NavItem[] = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
   { href: "/profile", label: "Profile", icon: UserRound },
   { href: "/records", label: "Health records", icon: ShieldCheck },
@@ -21,14 +27,37 @@ const navItems = [
   { href: "/consents", label: "Consents", icon: ShieldCheck },
 ];
 
-function SidebarContent({ close, pathname }: { close?: () => void; pathname: string }) {
+const providerNavItems: NavItem[] = [
+  { href: "/care-team", label: "Care Team Home", icon: UsersRound },
+  { href: "/notifications", label: "Notifications", icon: Bell },
+];
+
+const adminNavItems: NavItem[] = [
+  { href: "/admin", label: "Admin Overview", icon: LayoutDashboard },
+  { href: "/notifications", label: "Notifications", icon: Bell },
+];
+
+function getNavItems(variant: "patient" | "provider" | "admin") {
+  switch (variant) {
+    case "provider":
+      return providerNavItems;
+    case "admin":
+      return adminNavItems;
+    default:
+      return patientNavItems;
+  }
+}
+
+function SidebarContent({ close, pathname, subtitle, variant }: { close?: () => void; pathname: string; subtitle: string; variant: "patient" | "provider" | "admin" }) {
+  const navItems = getNavItems(variant);
+
   return (
     <>
       <div className="flex items-center gap-3">
         <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-cyan-400 font-serif text-lg text-slate-950">MC</div>
         <div>
           <p className="font-serif text-2xl">MedConnect</p>
-          <p className="text-sm text-slate-400">Patient portal</p>
+          <p className="text-sm text-slate-400">{subtitle}</p>
         </div>
       </div>
       <nav className="mt-8 grid gap-2">
@@ -59,13 +88,20 @@ function SidebarContent({ close, pathname }: { close?: () => void; pathname: str
 
 export function PortalShell({
   profileName,
+  roleLabel,
+  subtitle,
   children,
+  variant = "patient",
 }: {
   profileName: string;
+  roleLabel?: string;
+  subtitle?: string;
   children: React.ReactNode;
+  variant?: "patient" | "provider" | "admin";
 }) {
   const pathname = usePathname();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const shellSubtitle = subtitle ?? "Patient portal";
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(34,211,238,0.16),_transparent_30%),radial-gradient(circle_at_bottom_right,_rgba(16,185,129,0.18),_transparent_35%),linear-gradient(180deg,_#020617,_#0f172a)] text-slate-100">
@@ -79,14 +115,14 @@ export function PortalShell({
                 <X className="h-4 w-4" />
               </button>
             </div>
-            <SidebarContent pathname={pathname} close={() => setIsDrawerOpen(false)} />
+            <SidebarContent pathname={pathname} close={() => setIsDrawerOpen(false)} subtitle={shellSubtitle} variant={variant} />
           </div>
         </div>
       ) : null}
 
       <div className="mx-auto grid min-h-screen max-w-[1600px] lg:grid-cols-[280px_1fr]">
         <aside className="hidden border-r border-white/10 bg-slate-950/70 p-6 lg:block">
-          <SidebarContent pathname={pathname} />
+          <SidebarContent pathname={pathname} subtitle={shellSubtitle} variant={variant} />
         </aside>
         <div className="flex min-h-screen flex-col">
           <header className="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 px-6 py-5">
@@ -96,7 +132,10 @@ export function PortalShell({
               </button>
               <div>
                 <p className="text-sm uppercase tracking-[0.28em] text-cyan-200/80">Connected care</p>
-                <h1 className="font-serif text-3xl text-white">{profileName}</h1>
+                <div className="flex flex-wrap items-center gap-3">
+                  <h1 className="font-serif text-3xl text-white">{profileName}</h1>
+                  {roleLabel ? <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.2em] text-cyan-100">{roleLabel}</span> : null}
+                </div>
               </div>
             </div>
             <div className="flex items-center gap-3">

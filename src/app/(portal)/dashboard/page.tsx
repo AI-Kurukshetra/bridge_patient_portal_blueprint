@@ -1,8 +1,20 @@
-﻿import { SectionCard, StatCard, StatusBadge } from "@/components/ui/primitives";
+﻿import { redirect } from "next/navigation";
+import { SectionCard, StatCard, StatusBadge } from "@/components/ui/primitives";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
 import { getPortalData } from "@/lib/queries/portal";
+import { getAuthContext } from "@/lib/auth/server";
+import { getDefaultRouteForRole } from "@/lib/auth/roles";
 
 export default async function DashboardPage() {
+  const auth = await getAuthContext();
+  if (!auth) {
+    redirect("/login");
+  }
+
+  if (auth.role !== "patient") {
+    redirect(getDefaultRouteForRole(auth.role));
+  }
+
   const data = await getPortalData();
   if (!data || !data.patient) return null;
 

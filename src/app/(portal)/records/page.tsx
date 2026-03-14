@@ -1,10 +1,24 @@
 ﻿import { EmptyState, SectionCard, StatusBadge } from "@/components/ui/primitives";
+import { logAudit } from "@/lib/audit";
 import { formatDate } from "@/lib/utils";
 import { getPortalData } from "@/lib/queries/portal";
 
 export default async function RecordsPage() {
   const data = await getPortalData();
   if (!data) return null;
+
+  if (data.patient) {
+    await logAudit({
+      action: "VIEW_HEALTH_RECORDS",
+      metadata: {
+        allergies: data.allergies.length,
+        conditions: data.conditions.length,
+        procedures: data.procedures.length,
+      },
+      patientId: data.patient.id,
+      resourceType: "health-records",
+    });
+  }
 
   return (
     <div className="grid gap-6 lg:grid-cols-3">
@@ -32,4 +46,3 @@ export default async function RecordsPage() {
     </div>
   );
 }
-

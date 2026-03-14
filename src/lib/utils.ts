@@ -30,10 +30,13 @@ export function getInitials(name: string) {
     .join("");
 }
 
+export function getAppUrl() {
+  return process.env.NEXT_PUBLIC_APP_URL ?? "http://127.0.0.1:3000";
+}
+
 export type ActionResult<T = undefined> = {
   success?: boolean;
   data?: T;
   message?: string;
   error?: Record<string, string[]>;
 };
-

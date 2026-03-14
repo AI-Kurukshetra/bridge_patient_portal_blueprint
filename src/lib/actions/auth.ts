@@ -2,8 +2,17 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { type ActionResult } from "@/lib/utils";
-import { loginSchema, registerSchema, type LoginInput, type RegisterInput } from "@/lib/validations/auth";
+import { type ActionResult, getAppUrl } from "@/lib/utils";
+import {
+  forgotPasswordSchema,
+  loginSchema,
+  registerSchema,
+  resetPasswordSchema,
+  type ForgotPasswordInput,
+  type LoginInput,
+  type RegisterInput,
+  type ResetPasswordInput,
+} from "@/lib/validations/auth";
 
 export async function loginAction(payload: LoginInput): Promise<ActionResult> {
   const parsed = loginSchema.safeParse(payload);
@@ -40,6 +49,7 @@ export async function registerAction(payload: RegisterInput): Promise<ActionResu
       data: {
         full_name: parsed.data.fullName,
       },
+      emailRedirectTo: `${getAppUrl()}/auth/callback?next=/dashboard`,
     },
   });
 
@@ -56,8 +66,56 @@ export async function registerAction(payload: RegisterInput): Promise<ActionResu
     success: true,
     message: data.session
       ? "Account created. Redirecting to your portal."
-      : "Account created. Check your email if confirmation is required before signing in.",
+      : "Account created. Check your email to confirm your account.",
   };
+}
+
+export async function requestPasswordResetAction(payload: ForgotPasswordInput): Promise<ActionResult> {
+  const parsed = forgotPasswordSchema.safeParse(payload);
+  if (!parsed.success) {
+    return { error: parsed.error.flatten().fieldErrors };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.resetPasswordForEmail(parsed.data.email, {
+    redirectTo: `${getAppUrl()}/auth/callback?next=/reset-password`,
+  });
+
+  if (error) {
+    return { error: { _form: [error.message] } };
+  }
+
+  return {
+    success: true,
+    message: "Password reset email sent. Check your inbox for the recovery link.",
+  };
+}
+
+export async function updatePasswordAction(payload: ResetPasswordInput): Promise<ActionResult> {
+  const parsed = resetPasswordSchema.safeParse(payload);
+  if (!parsed.success) {
+    return { error: parsed.error.flatten().fieldErrors };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { error: { _form: ["Password recovery session is missing or expired"] } };
+  }
+
+  const { error } = await supabase.auth.updateUser({
+    password: parsed.data.password,
+  });
+
+  if (error) {
+    return { error: { _form: [error.message] } };
+  }
+
+  revalidatePath("/login", "layout");
+  return { success: true, message: "Password updated. You can now sign in with the new password." };
 }
 
 export async function logoutAction(): Promise<void> {
@@ -65,5 +123,3 @@ export async function logoutAction(): Promise<void> {
   await supabase.auth.signOut();
   revalidatePath("/", "layout");
 }
-
-

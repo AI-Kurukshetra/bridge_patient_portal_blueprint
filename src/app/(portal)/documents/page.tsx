@@ -1,11 +1,21 @@
 ﻿import { DocumentForm } from "@/components/forms/document-form";
 import { EmptyState, SectionCard, StatusBadge } from "@/components/ui/primitives";
+import { logAudit } from "@/lib/audit";
 import { formatDate } from "@/lib/utils";
 import { getPortalData } from "@/lib/queries/portal";
 
 export default async function DocumentsPage() {
   const data = await getPortalData();
   if (!data) return null;
+
+  if (data.patient) {
+    await logAudit({
+      action: "VIEW_DOCUMENT_LIBRARY",
+      metadata: { documentsViewed: data.documents.length },
+      patientId: data.patient.id,
+      resourceType: "documents",
+    });
+  }
 
   return (
     <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">

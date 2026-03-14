@@ -1,11 +1,21 @@
 ﻿import { LabTrendChart } from "@/components/portal/lab-trend-chart";
 import { EmptyState, SectionCard, StatusBadge } from "@/components/ui/primitives";
+import { logAudit } from "@/lib/audit";
 import { formatDate } from "@/lib/utils";
 import { getPortalData } from "@/lib/queries/portal";
 
 export default async function LabResultsPage() {
   const data = await getPortalData();
   if (!data) return null;
+
+  if (data.patient) {
+    await logAudit({
+      action: "VIEW_LAB_RESULTS",
+      metadata: { resultsViewed: data.labResults.length },
+      patientId: data.patient.id,
+      resourceType: "lab-results",
+    });
+  }
 
   return (
     <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
@@ -22,4 +32,3 @@ export default async function LabResultsPage() {
     </div>
   );
 }
-

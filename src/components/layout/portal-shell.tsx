@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, CalendarDays, FileStack, FlaskConical, LayoutDashboard, MessageSquareText, ReceiptText, ShieldCheck, UserRound, Pill } from "lucide-react";
+import { useState } from "react";
+import { Bell, CalendarDays, FileStack, FlaskConical, LayoutDashboard, Menu, MessageSquareText, Pill, ReceiptText, ShieldCheck, UserRound, X } from "lucide-react";
 import { logoutAction } from "@/lib/actions/auth";
-import { getInitials } from "@/lib/utils";
+import { cn, getInitials } from "@/lib/utils";
 
 const navItems = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
@@ -20,6 +21,42 @@ const navItems = [
   { href: "/consents", label: "Consents", icon: ShieldCheck },
 ];
 
+function SidebarContent({ close, pathname }: { close?: () => void; pathname: string }) {
+  return (
+    <>
+      <div className="flex items-center gap-3">
+        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-cyan-400 font-serif text-lg text-slate-950">MC</div>
+        <div>
+          <p className="font-serif text-2xl">MedConnect</p>
+          <p className="text-sm text-slate-400">Patient portal</p>
+        </div>
+      </div>
+      <nav className="mt-8 grid gap-2">
+        {navItems.map((item) => {
+          const Icon = item.icon;
+          const active = pathname === item.href;
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              onClick={close}
+              className={cn(
+                "flex items-center gap-3 rounded-2xl px-4 py-3 text-sm transition",
+                active
+                  ? "bg-cyan-400/15 text-cyan-200 ring-1 ring-cyan-400/20"
+                  : "text-slate-300 hover:bg-white/5 hover:text-white",
+              )}
+            >
+              <Icon className="h-4 w-4" />
+              {item.label}
+            </Link>
+          );
+        })}
+      </nav>
+    </>
+  );
+}
+
 export function PortalShell({
   profileName,
   children,
@@ -28,30 +65,39 @@ export function PortalShell({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(34,211,238,0.16),_transparent_30%),radial-gradient(circle_at_bottom_right,_rgba(16,185,129,0.18),_transparent_35%),linear-gradient(180deg,_#020617,_#0f172a)] text-slate-100">
+      {isDrawerOpen ? (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <button className="absolute inset-0 bg-slate-950/70" aria-label="Close navigation menu" onClick={() => setIsDrawerOpen(false)} />
+          <div className="relative h-full w-[82%] max-w-xs border-r border-white/10 bg-slate-950/95 p-6 shadow-2xl">
+            <div className="mb-4 flex items-center justify-between">
+              <span className="text-sm uppercase tracking-[0.3em] text-cyan-200/75">Navigation</span>
+              <button className="rounded-2xl border border-white/10 p-2 transition hover:border-cyan-400 hover:text-cyan-200" onClick={() => setIsDrawerOpen(false)} aria-label="Close navigation drawer">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <SidebarContent pathname={pathname} close={() => setIsDrawerOpen(false)} />
+          </div>
+        </div>
+      ) : null}
+
       <div className="mx-auto grid min-h-screen max-w-[1600px] lg:grid-cols-[280px_1fr]">
-        <aside className="border-b border-white/10 bg-slate-950/70 p-6 lg:border-b-0 lg:border-r">
-          <div className="flex items-center gap-3"><div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-cyan-400 font-serif text-lg text-slate-950">MC</div><div><p className="font-serif text-2xl">MedConnect</p><p className="text-sm text-slate-400">Patient portal</p></div></div>
-          <nav className="mt-8 grid gap-2">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const active = pathname === item.href;
-              return (
-                <Link key={item.href} href={item.href} className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-sm transition ${active ? "bg-cyan-400/15 text-cyan-200 ring-1 ring-cyan-400/20" : "text-slate-300 hover:bg-white/5 hover:text-white"}`}>
-                  <Icon className="h-4 w-4" />
-                  {item.label}
-                </Link>
-              );
-            })}
-          </nav>
+        <aside className="hidden border-r border-white/10 bg-slate-950/70 p-6 lg:block">
+          <SidebarContent pathname={pathname} />
         </aside>
         <div className="flex min-h-screen flex-col">
           <header className="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 px-6 py-5">
-            <div>
-              <p className="text-sm uppercase tracking-[0.28em] text-cyan-200/80">Connected care</p>
-              <h1 className="font-serif text-3xl text-white">{profileName}</h1>
+            <div className="flex items-center gap-3">
+              <button className="rounded-2xl border border-white/10 p-3 transition hover:border-cyan-400 hover:text-cyan-200 lg:hidden" onClick={() => setIsDrawerOpen(true)} aria-label="Open navigation drawer">
+                <Menu className="h-4 w-4" />
+              </button>
+              <div>
+                <p className="text-sm uppercase tracking-[0.28em] text-cyan-200/80">Connected care</p>
+                <h1 className="font-serif text-3xl text-white">{profileName}</h1>
+              </div>
             </div>
             <div className="flex items-center gap-3">
               <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-sm font-medium">{getInitials(profileName)}</div>
@@ -64,4 +110,3 @@ export function PortalShell({
     </div>
   );
 }
-

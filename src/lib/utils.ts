@@ -1,4 +1,4 @@
-﻿import { clsx, type ClassValue } from "clsx";
+import { clsx, type ClassValue } from "clsx";
 import { format } from "date-fns";
 import { twMerge } from "tailwind-merge";
 
@@ -31,7 +31,15 @@ export function getInitials(name: string) {
 }
 
 export function getAppUrl() {
-  return process.env.NEXT_PUBLIC_APP_URL ?? "http://127.0.0.1:3000";
+  if (process.env.NEXT_PUBLIC_APP_URL) {
+    return process.env.NEXT_PUBLIC_APP_URL;
+  }
+
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`;
+  }
+
+  return "http://127.0.0.1:3000";
 }
 
 export type ActionResult<T = undefined> = {

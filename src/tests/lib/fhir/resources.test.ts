@@ -57,6 +57,7 @@ describe("FHIR resource builders", () => {
       accepting_patients: true,
       bio: null,
       city: "Austin",
+      created_at: "2026-03-01T08:00:00Z",
       department: null,
       email: "dr@example.com",
       first_name: "Nina",

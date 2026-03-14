@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { LabTrendChart } from "@/components/portal/lab-trend-chart";
 import { EmptyState, SectionCard, StatCard, StatusBadge } from "@/components/ui/primitives";
+import { getDeniedClaimCount, getLatestClaim, getOpenClaimCount } from "@/lib/insurance";
 import { formatDate, formatDateTime } from "@/lib/utils";
 import type { PatientChartData } from "@/lib/queries/patient-chart";
 
@@ -74,6 +75,9 @@ export function PatientChart({
     return category.includes("immun") || category.includes("vaccin");
   });
   const timeline = buildTimeline(chart);
+  const openClaims = getOpenClaimCount(chart.insuranceClaims);
+  const deniedClaims = getDeniedClaimCount(chart.insuranceClaims);
+  const latestClaim = getLatestClaim(chart.insuranceClaims);
 
   return (
     <div className="grid gap-6">
@@ -98,7 +102,17 @@ export function PatientChart({
                 <p>Relationship: <span className="text-white">{chart.patient.emergency_contact_rel ?? "Not recorded"}</span></p>
                 <p>Insurance: <span className="text-white">{chart.patient.insurance_provider ?? "Not recorded"}</span></p>
                 <p>Policy: <span className="text-white">{chart.patient.insurance_policy_no ?? "Not recorded"}</span></p>
+                <p>Open claims: <span className="text-white">{openClaims}</span></p>
+                <p>Denied claims: <span className="text-white">{deniedClaims}</span></p>
+                <p>Latest claim: <span className="text-white">{latestClaim ? `${latestClaim.claim_number} (${latestClaim.status.replaceAll("_", " ")})` : "No claims on file"}</span></p>
               </div>
+              {chart.viewerRole === "patient" ? (
+                <div className="mt-4">
+                  <Link href="/insurance" className="text-sm text-cyan-200 transition hover:text-cyan-100">
+                    Open insurance center
+                  </Link>
+                </div>
+              ) : null}
             </div>
           </div>
           <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-3">

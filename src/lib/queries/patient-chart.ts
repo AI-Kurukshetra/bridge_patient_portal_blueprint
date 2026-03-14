@@ -20,6 +20,7 @@ export type PatientChartData = {
   labResults: Row<"lab_results">[];
   prescriptions: Row<"prescriptions">[];
   documents: Row<"documents">[];
+  insuranceClaims: Row<"insurance_claims">[];
 };
 
 export type ProviderPatientDirectoryEntry = {
@@ -165,7 +166,7 @@ export async function getAuthorizedPatientChart(patientId: string): Promise<Pati
     }
   }
 
-  const [patientProfileRes, appointmentsRes, conditionsRes, allergiesRes, proceduresRes, labsRes, prescriptionsRes, documentsRes] = await Promise.all([
+  const [patientProfileRes, appointmentsRes, conditionsRes, allergiesRes, proceduresRes, labsRes, prescriptionsRes, documentsRes, insuranceClaimsRes] = await Promise.all([
     supabase.from("profiles").select("*").eq("id", patient.profile_id).single(),
     supabase.from("appointments").select("*").eq("patient_id", patient.id).order("scheduled_at"),
     supabase.from("conditions").select("*").eq("patient_id", patient.id).order("onset_date", { ascending: false }),
@@ -174,6 +175,7 @@ export async function getAuthorizedPatientChart(patientId: string): Promise<Pati
     supabase.from("lab_results").select("*").eq("patient_id", patient.id).order("observed_at", { ascending: false }),
     supabase.from("prescriptions").select("*").eq("patient_id", patient.id).order("prescribed_on", { ascending: false }),
     supabase.from("documents").select("*").eq("patient_id", patient.id).order("created_at", { ascending: false }),
+    supabase.from("insurance_claims").select("*").eq("patient_id", patient.id).order("submitted_at", { ascending: false }),
   ]);
 
   const providerIds = [...new Set([
@@ -184,7 +186,8 @@ export async function getAuthorizedPatientChart(patientId: string): Promise<Pati
     ...(proceduresRes.data ?? []).map((item) => item.provider_id),
     ...(labsRes.data ?? []).map((item) => item.provider_id),
     ...(prescriptionsRes.data ?? []).map((item) => item.provider_id),
-  ].filter((value): value is string => Boolean(value)))];
+    ...(insuranceClaimsRes.data ?? []).map((item) => item.provider_id),
+  ].filter((value): value is string => Boolean(value)))] ;
 
   const { data: careTeam } = providerIds.length > 0
     ? await supabase.from("providers").select("*").in("id", providerIds)
@@ -204,5 +207,6 @@ export async function getAuthorizedPatientChart(patientId: string): Promise<Pati
     labResults: labsRes.data ?? [],
     prescriptions: prescriptionsRes.data ?? [],
     documents: documentsRes.data ?? [],
+    insuranceClaims: insuranceClaimsRes.data ?? [],
   };
 }

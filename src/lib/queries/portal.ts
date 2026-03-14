@@ -1,4 +1,4 @@
-﻿import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 import { normalizeRole } from "@/lib/auth/roles";
 import type { Row } from "@/types/database";
 
@@ -22,6 +22,7 @@ export type PortalData = {
   prescriptions: Row<"prescriptions">[];
   conversations: ConversationWithMessages[];
   documents: DocumentWithAccess[];
+  insuranceClaims: Row<"insurance_claims">[];
   invoices: Row<"invoices">[];
   payments: Row<"payments">[];
   notifications: Row<"notifications">[];
@@ -72,6 +73,7 @@ export async function getPortalData(): Promise<PortalData | null> {
       prescriptions: [],
       conversations: [],
       documents: [],
+      insuranceClaims: [],
       invoices: [],
       payments: [],
       notifications: notifications ?? [],
@@ -82,7 +84,7 @@ export async function getPortalData(): Promise<PortalData | null> {
 
   const patientId = patient.id;
 
-  const [appointmentsRes, conditionsRes, allergiesRes, proceduresRes, labsRes, prescriptionsRes, documentsRes, invoicesRes, paymentsRes, conversationsRes, messagesRes] = await Promise.all([
+  const [appointmentsRes, conditionsRes, allergiesRes, proceduresRes, labsRes, prescriptionsRes, documentsRes, insuranceClaimsRes, invoicesRes, paymentsRes, conversationsRes, messagesRes] = await Promise.all([
     supabase.from("appointments").select("*").eq("patient_id", patientId).order("scheduled_at"),
     supabase.from("conditions").select("*").eq("patient_id", patientId).order("onset_date", { ascending: false }),
     supabase.from("allergies").select("*").eq("patient_id", patientId).order("allergen"),
@@ -90,6 +92,7 @@ export async function getPortalData(): Promise<PortalData | null> {
     supabase.from("lab_results").select("*").eq("patient_id", patientId).order("observed_at", { ascending: false }),
     supabase.from("prescriptions").select("*").eq("patient_id", patientId).order("prescribed_on", { ascending: false }),
     supabase.from("documents").select("*").eq("patient_id", patientId).order("created_at", { ascending: false }),
+    supabase.from("insurance_claims").select("*").eq("patient_id", patientId).order("submitted_at", { ascending: false }),
     supabase.from("invoices").select("*").eq("patient_id", patientId).order("issued_at", { ascending: false }),
     supabase.from("payments").select("*").eq("patient_id", patientId).order("processed_at", { ascending: false }),
     conversationIds.length > 0
@@ -135,6 +138,7 @@ export async function getPortalData(): Promise<PortalData | null> {
     prescriptions: prescriptionsRes.data ?? [],
     conversations,
     documents,
+    insuranceClaims: insuranceClaimsRes.data ?? [],
     invoices: invoicesRes.data ?? [],
     payments: paymentsRes.data ?? [],
     notifications: notifications ?? [],

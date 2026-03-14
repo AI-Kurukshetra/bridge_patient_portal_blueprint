@@ -17,6 +17,12 @@ type ProvisioningSelection = {
   providerOrganization: string | null;
 };
 
+type StoredProfile = {
+  role: AppRole | null;
+  fullName: string | null;
+  email: string | null;
+};
+
 function getMetadataString(user: User, key: string) {
   const value = user.user_metadata?.[key];
   return typeof value === "string" ? value.trim() : "";
@@ -57,9 +63,42 @@ export function validateRegistrationAccessCode(role: AppRole, accessCode?: strin
     : "Invalid admin access code. This demo requires the configured staff code to create an admin account.";
 }
 
-async function getStoredRole(supabase: SupabaseServerClient, userId: string) {
-  const { data: profile } = await supabase.from("profiles").select("role").eq("id", userId).single();
-  return profile ? normalizeRole(profile.role) : null;
+async function getStoredProfile(supabase: SupabaseServerClient, userId: string): Promise<StoredProfile> {
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role, full_name, email")
+    .eq("id", userId)
+    .maybeSingle();
+
+  return profile
+    ? {
+        role: normalizeRole(profile.role),
+        fullName: profile.full_name,
+        email: profile.email,
+      }
+    : {
+        role: null,
+        fullName: null,
+        email: null,
+      };
+}
+
+async function syncProfileRegistrationData(
+  supabase: SupabaseServerClient,
+  user: User,
+  role: AppRole,
+  storedProfile: StoredProfile,
+) {
+  const email = user.email?.trim().toLowerCase() || storedProfile.email || null;
+  const fullName = getMetadataString(user, "full_name") || storedProfile.fullName || "MedConnect User";
+  const { error } = await supabase.from("profiles").upsert({
+    id: user.id,
+    email,
+    full_name: fullName,
+    role,
+  });
+
+  return error?.message ?? null;
 }
 
 export async function syncAuthenticatedAccountRole(
@@ -75,7 +114,8 @@ export async function syncAuthenticatedAccountRole(
     return null;
   }
 
-  const storedRole = explicitRole ?? (await getStoredRole(supabase, user.id));
+  const storedProfile = await getStoredProfile(supabase, user.id);
+  const storedRole = explicitRole ?? storedProfile.role;
   const selection = resolveProvisioningSelection(user, storedRole);
   const { error } = await supabase.rpc("provision_account_role", {
     target_role: selection.role,
@@ -91,7 +131,17 @@ export async function syncAuthenticatedAccountRole(
     };
   }
 
-  const finalizedRole = (await getStoredRole(supabase, user.id)) ?? selection.role;
+  const finalizedProfile = await getStoredProfile(supabase, user.id);
+  const finalizedRole = finalizedProfile.role ?? selection.role;
+  const profileSyncError = await syncProfileRegistrationData(supabase, user, finalizedRole, finalizedProfile);
+  if (profileSyncError) {
+    return {
+      error: profileSyncError,
+      redirectTo: "/login",
+      role: finalizedRole,
+    };
+  }
+
   if (finalizedRole === "patient") {
     await supabase.rpc("seed_demo_data_for_current_user");
   }

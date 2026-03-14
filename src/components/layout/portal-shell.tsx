@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { Bell, CalendarDays, Download, FileStack, FlaskConical, LayoutDashboard, Menu, MessageSquareText, Pill, ReceiptText, ShieldCheck, UserRound, UsersRound, X } from "lucide-react";
+import { Bell, CalendarDays, Download, FileStack, FlaskConical, LayoutDashboard, Menu, MessageSquareText, Pill, ReceiptText, ShieldCheck, UserRound, UsersRound, WalletCards, X } from "lucide-react";
 import { logoutAction } from "@/lib/actions/auth";
 import { cn, getInitials } from "@/lib/utils";
 
@@ -23,6 +23,7 @@ const patientNavItems: NavItem[] = [
   { href: "/prescriptions", label: "Prescriptions", icon: Pill },
   { href: "/messaging", label: "Messaging", icon: MessageSquareText },
   { href: "/documents", label: "Documents", icon: FileStack },
+  { href: "/insurance", label: "Insurance", icon: WalletCards },
   { href: "/data-export", label: "Data export", icon: Download },
   { href: "/billing", label: "Billing", icon: ReceiptText },
   { href: "/notifications", label: "Notifications", icon: Bell },

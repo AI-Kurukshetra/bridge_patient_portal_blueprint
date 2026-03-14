@@ -40,7 +40,8 @@ export async function loginAction(payload: LoginInput): Promise<ActionResult<{ r
     ? await supabase.from("profiles").select("role").eq("id", user.id).single()
     : { data: null };
 
-  const synchronized = await syncAuthenticatedAccountRole(supabase, normalizeRole(profile?.role));
+  const explicitRole = profile?.role ? normalizeRole(profile.role) : undefined;
+  const synchronized = await syncAuthenticatedAccountRole(supabase, explicitRole);
   if (!synchronized) {
     return { error: { _form: ["Signed in, but the account session could not be restored."] } };
   }

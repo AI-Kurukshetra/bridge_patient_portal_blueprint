@@ -1,4 +1,4 @@
-﻿import { cn } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 
 export function FormError({ message }: { message?: string }) {
   if (!message) return null;
@@ -36,10 +36,16 @@ export function SectionCard({
 
 const toneClasses: Record<string, string> = {
   scheduled: "bg-sky-500/15 text-sky-200 ring-sky-400/20",
+  submitted: "bg-sky-500/15 text-sky-200 ring-sky-400/20",
   confirmed: "bg-emerald-500/15 text-emerald-200 ring-emerald-400/20",
   completed: "bg-slate-500/15 text-slate-100 ring-white/10",
   cancelled: "bg-rose-500/15 text-rose-200 ring-rose-400/20",
   active: "bg-emerald-500/15 text-emerald-200 ring-emerald-400/20",
+  approved: "bg-emerald-500/15 text-emerald-200 ring-emerald-400/20",
+  under_review: "bg-amber-500/15 text-amber-100 ring-amber-400/20",
+  partially_approved: "bg-cyan-500/15 text-cyan-100 ring-cyan-400/20",
+  appealed: "bg-cyan-500/15 text-cyan-100 ring-cyan-400/20",
+  denied: "bg-rose-500/15 text-rose-100 ring-rose-400/20",
   open: "bg-amber-500/15 text-amber-100 ring-amber-400/20",
   paid: "bg-emerald-500/15 text-emerald-200 ring-emerald-400/20",
   high: "bg-rose-500/15 text-rose-100 ring-rose-400/20",
@@ -75,4 +81,3 @@ export function StatCard({ label, value, detail }: { label: string; value: strin
     </div>
   );
 }
-

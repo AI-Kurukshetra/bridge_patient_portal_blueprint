@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 
 export function fhirJson(body: unknown, status = 200) {
   return NextResponse.json(body, {
@@ -7,8 +7,37 @@ export function fhirJson(body: unknown, status = 200) {
   });
 }
 
-export function fhirUnauthorized() {
-  return fhirJson({ error: "Unauthorized" }, 401);
+export function makeOperationOutcome(severity: "fatal" | "error" | "warning" | "information", code: string, diagnostics: string) {
+  return {
+    resourceType: "OperationOutcome",
+    issue: [
+      {
+        severity,
+        code,
+        diagnostics,
+      },
+    ],
+  };
+}
+
+export function fhirOutcome(status: number, severity: "fatal" | "error" | "warning" | "information", code: string, diagnostics: string) {
+  return fhirJson(makeOperationOutcome(severity, code, diagnostics), status);
+}
+
+export function fhirUnauthorized(message = "Authentication is required for FHIR access.") {
+  return fhirOutcome(401, "error", "login", message);
+}
+
+export function fhirForbidden(message = "The current user is not authorized for the requested FHIR resource.") {
+  return fhirOutcome(403, "error", "forbidden", message);
+}
+
+export function fhirBadRequest(message: string) {
+  return fhirOutcome(400, "error", "required", message);
+}
+
+export function fhirNotFound(message = "The requested FHIR resource was not found.") {
+  return fhirOutcome(404, "error", "not-found", message);
 }
 
 export function paginate<T>(items: T[], count: number, offset: number) {
@@ -55,11 +84,11 @@ export function filterByLastUpdated<T>(items: T[], lastUpdated: Date | null, acc
   });
 }
 
-export function makeBundle(entries: { resource: unknown }[]) {
+export function makeBundle(entries: { resource: unknown }[], total = entries.length) {
   return {
     resourceType: "Bundle",
     type: "searchset",
-    total: entries.length,
+    total,
     entry: entries,
   };
 }

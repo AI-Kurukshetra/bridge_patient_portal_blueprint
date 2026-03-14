@@ -1,17 +1,18 @@
-﻿import { buildFhirPatient } from "@/lib/fhir/patient";
-import { fhirJson, fhirUnauthorized } from "@/lib/fhir/utils";
-import { getPortalData } from "@/lib/queries/portal";
+import { getFhirPatientContextById } from "@/lib/fhir/context";
+import { buildFhirPatient } from "@/lib/fhir/patient";
+import { fhirJson, fhirNotFound, fhirUnauthorized } from "@/lib/fhir/utils";
 
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const data = await getPortalData();
-  if (!data || !data.profile || !data.patient) {
+  const result = await getFhirPatientContextById(id);
+
+  if (result.status === "unauthorized") {
     return fhirUnauthorized();
   }
 
-  if (id !== data.patient.id) {
-    return fhirJson({ error: "Not Found" }, 404);
+  if (result.status !== "ok" || !result.context.profile) {
+    return fhirNotFound();
   }
 
-  return fhirJson(buildFhirPatient(data.profile, data.patient));
+  return fhirJson(buildFhirPatient(result.context.profile, result.context.patient));
 }

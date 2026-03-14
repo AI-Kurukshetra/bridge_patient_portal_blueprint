@@ -1,39 +1,18 @@
-﻿import { filterByLastUpdated, fhirJson, fhirUnauthorized, makeBundle, matchesPatient, paginate, parseLastUpdated, parsePagination } from "@/lib/fhir/utils";
-import { getPortalData } from "@/lib/queries/portal";
+import { getFhirPatientContextFromRequest } from "@/lib/fhir/context";
+import { buildFhirDiagnosticReport } from "@/lib/fhir/resources";
+import { filterByLastUpdated, fhirJson, makeBundle, paginate, parseLastUpdated, parsePagination } from "@/lib/fhir/utils";
 
 export async function GET(request: Request) {
-  const data = await getPortalData();
-  if (!data || !data.patient) {
-    return fhirUnauthorized();
+  const resolved = await getFhirPatientContextFromRequest(request);
+  if ("response" in resolved) {
+    return resolved.response;
   }
 
-  const url = new URL(request.url);
-  if (!matchesPatient(url, data.patient.id)) {
-    return fhirJson(makeBundle([]));
-  }
-
-  const { count, offset } = parsePagination(url);
+  const { context, url } = resolved;
   const lastUpdated = parseLastUpdated(url.searchParams.get("_lastUpdated"));
-  const filtered = paginate(
-    filterByLastUpdated(data.labResults, lastUpdated, (result) => result.observed_at),
-    count,
-    offset,
-  );
+  const resources = filterByLastUpdated(context.labResults, lastUpdated, (result) => result.observed_at);
+  const { count, offset } = parsePagination(url);
+  const filtered = paginate(resources, count, offset);
 
-  return fhirJson(
-    makeBundle(
-      filtered.map((result) => ({
-        resource: {
-          resourceType: "DiagnosticReport",
-          id: result.id,
-          status: result.status,
-          code: { text: result.panel_name },
-          subject: { reference: `Patient/${data.patient!.id}` },
-          effectiveDateTime: result.observed_at,
-          result: [{ reference: `Observation/${result.fhir_id ?? result.id}`, display: result.test_name }],
-          conclusion: result.result_text ?? undefined,
-        },
-      })),
-    ),
-  );
+  return fhirJson(makeBundle(filtered.map((result) => ({ resource: buildFhirDiagnosticReport(result, context.patient.id) })), resources.length));
 }

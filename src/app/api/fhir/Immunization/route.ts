@@ -1,37 +1,22 @@
-﻿import { fhirJson, fhirUnauthorized, makeBundle, matchesPatient, paginate, parsePagination } from "@/lib/fhir/utils";
-import { getPortalData } from "@/lib/queries/portal";
+import { getFhirPatientContextFromRequest } from "@/lib/fhir/context";
+import { buildFhirImmunization } from "@/lib/fhir/resources";
+import { filterByLastUpdated, fhirJson, makeBundle, paginate, parseLastUpdated, parsePagination } from "@/lib/fhir/utils";
 
 export async function GET(request: Request) {
-  const data = await getPortalData();
-  if (!data || !data.patient) {
-    return fhirUnauthorized();
+  const resolved = await getFhirPatientContextFromRequest(request);
+  if ("response" in resolved) {
+    return resolved.response;
   }
 
-  const url = new URL(request.url);
-  if (!matchesPatient(url, data.patient.id)) {
-    return fhirJson(makeBundle([]));
-  }
-
-  const { count, offset } = parsePagination(url);
-  const immunizations = data.procedures.filter((item) => {
+  const { context, url } = resolved;
+  const lastUpdated = parseLastUpdated(url.searchParams.get("_lastUpdated"));
+  const immunizations = context.procedures.filter((item) => {
     const category = item.category?.toLowerCase() ?? "";
     return category.includes("immun") || category.includes("vaccin");
   });
-  const filtered = paginate(immunizations, count, offset);
+  const resources = filterByLastUpdated(immunizations, lastUpdated, (item) => item.performed_at);
+  const { count, offset } = parsePagination(url);
+  const filtered = paginate(resources, count, offset);
 
-  return fhirJson(
-    makeBundle(
-      filtered.map((item) => ({
-        resource: {
-          resourceType: "Immunization",
-          id: item.id,
-          status: "completed",
-          vaccineCode: { text: item.procedure_name },
-          patient: { reference: `Patient/${data.patient!.id}` },
-          occurrenceDateTime: item.performed_at,
-          note: item.notes ? [{ text: item.notes }] : undefined,
-        },
-      })),
-    ),
-  );
+  return fhirJson(makeBundle(filtered.map((item) => ({ resource: buildFhirImmunization(item, context.patient.id) })), resources.length));
 }

@@ -1,32 +1,16 @@
-﻿import { fhirJson, fhirUnauthorized, makeBundle, matchesPatient, paginate, parsePagination } from "@/lib/fhir/utils";
-import { getPortalData } from "@/lib/queries/portal";
+import { getFhirPatientContextFromRequest } from "@/lib/fhir/context";
+import { buildFhirAllergy } from "@/lib/fhir/resources";
+import { fhirJson, makeBundle, paginate, parsePagination } from "@/lib/fhir/utils";
 
 export async function GET(request: Request) {
-  const data = await getPortalData();
-  if (!data || !data.patient) {
-    return fhirUnauthorized();
+  const resolved = await getFhirPatientContextFromRequest(request);
+  if ("response" in resolved) {
+    return resolved.response;
   }
 
-  const url = new URL(request.url);
-  if (!matchesPatient(url, data.patient.id)) {
-    return fhirJson(makeBundle([]));
-  }
-
+  const { context, url } = resolved;
   const { count, offset } = parsePagination(url);
-  const filtered = paginate(data.allergies, count, offset);
+  const filtered = paginate(context.allergies, count, offset);
 
-  return fhirJson(
-    makeBundle(
-      filtered.map((allergy) => ({
-        resource: {
-          resourceType: "AllergyIntolerance",
-          id: allergy.id,
-          clinicalStatus: { text: allergy.status },
-          code: { text: allergy.allergen },
-          patient: { reference: `Patient/${data.patient!.id}` },
-          reaction: [{ description: allergy.reaction?.join(", ") ?? undefined }],
-        },
-      })),
-    ),
-  );
+  return fhirJson(makeBundle(filtered.map((allergy) => ({ resource: buildFhirAllergy(allergy, context.patient.id) })), context.allergies.length));
 }

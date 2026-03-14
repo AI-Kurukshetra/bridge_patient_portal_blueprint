@@ -1,5 +1,5 @@
 import { getFhirPatientContextFromRequest } from "@/lib/fhir/context";
-import { buildFhirAppointment } from "@/lib/fhir/resources";
+import { buildFhirConsent } from "@/lib/fhir/resources";
 import { filterByLastUpdated, fhirJson, makeBundle, paginate, parseLastUpdated, parsePagination } from "@/lib/fhir/utils";
 
 export async function GET(request: Request) {
@@ -10,9 +10,9 @@ export async function GET(request: Request) {
 
   const { context, url } = resolved;
   const lastUpdated = parseLastUpdated(url.searchParams.get("_lastUpdated"));
-  const resources = filterByLastUpdated(context.appointments, lastUpdated, (item) => item.cancelled_at ?? item.scheduled_at);
+  const resources = filterByLastUpdated(context.consents, lastUpdated, (item) => item.updated_at);
   const { count, offset } = parsePagination(url);
   const filtered = paginate(resources, count, offset);
 
-  return fhirJson(makeBundle(filtered.map((item) => ({ resource: buildFhirAppointment(item, context.patient.id) })), resources.length));
+  return fhirJson(makeBundle(filtered.map((item) => ({ resource: buildFhirConsent(item, context.patient.id) })), resources.length));
 }

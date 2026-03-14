@@ -21,6 +21,7 @@ test("login page renders sign-in form", async ({ page }) => {
   ).toBeVisible();
   await expect(page.getByLabel(/email address/i)).toBeVisible();
   await expect(page.getByLabel(/password/i)).toBeVisible();
+  await expect(page.getByText(/provider panel/i)).toBeVisible();
 });
 
 test("register page renders account creation form", async ({ page }) => {
@@ -31,4 +32,6 @@ test("register page renders account creation form", async ({ page }) => {
   ).toBeVisible();
   await expect(page.getByLabel(/full name/i)).toBeVisible();
   await expect(page.getByLabel(/confirm password/i)).toBeVisible();
+  await expect(page.getByText(/account role/i)).toBeVisible();
+  await expect(page.getByText(/provider/i).first()).toBeVisible();
 });

@@ -29,13 +29,12 @@ const patientNavItems: NavItem[] = [
 
 const providerNavItems: NavItem[] = [
   { href: "/care-team", label: "Care Team Home", icon: UsersRound },
+  { href: "/care-team/appointments", label: "Appointments", icon: CalendarDays },
   { href: "/care-team/patients", label: "Patient Charts", icon: ShieldCheck },
-  { href: "/notifications", label: "Notifications", icon: Bell },
 ];
 
 const adminNavItems: NavItem[] = [
   { href: "/admin", label: "Admin Overview", icon: LayoutDashboard },
-  { href: "/notifications", label: "Notifications", icon: Bell },
 ];
 
 function getNavItems(variant: "patient" | "provider" | "admin") {

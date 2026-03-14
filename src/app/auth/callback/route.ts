@@ -1,5 +1,6 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { syncAuthenticatedAccountRole } from "@/lib/auth/onboarding";
 
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
@@ -7,7 +8,7 @@ export async function GET(request: Request) {
   const tokenHash = requestUrl.searchParams.get("token_hash");
   const type = requestUrl.searchParams.get("type");
   const next = requestUrl.searchParams.get("next") ?? "/dashboard";
-  const redirectUrl = new URL(next, requestUrl.origin);
+  let redirectUrl = new URL(next, requestUrl.origin);
   const supabase = await createClient();
 
   if (code) {
@@ -26,6 +27,20 @@ export async function GET(request: Request) {
       const loginUrl = new URL("/login", requestUrl.origin);
       loginUrl.searchParams.set("error", error.message);
       return NextResponse.redirect(loginUrl);
+    }
+  }
+
+  const isRecoveryFlow = type === "recovery" || next.startsWith("/reset-password");
+  if (!isRecoveryFlow) {
+    const synchronized = await syncAuthenticatedAccountRole(supabase);
+    if (synchronized?.error) {
+      const loginUrl = new URL("/login", requestUrl.origin);
+      loginUrl.searchParams.set("error", synchronized.error);
+      return NextResponse.redirect(loginUrl);
+    }
+
+    if (synchronized && (next === "/dashboard" || !requestUrl.searchParams.get("next"))) {
+      redirectUrl = new URL(synchronized.redirectTo, requestUrl.origin);
     }
   }
 

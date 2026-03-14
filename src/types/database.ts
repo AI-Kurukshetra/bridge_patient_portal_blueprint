@@ -1,4 +1,4 @@
-﻿export type Database = {
+export type Database = {
   public: {
     Tables: {
       profiles: { Row: { id: string; full_name: string; email: string; phone: string | null; date_of_birth: string | null; gender: string | null; avatar_url: string | null; role: string; is_mfa_enabled: boolean; preferred_lang: string; timezone: string; created_at: string; updated_at: string } };
@@ -23,6 +23,7 @@
     };
     Functions: {
       seed_demo_data_for_current_user: { Args: Record<string, never>; Returns: void };
+      provision_account_role: { Args: { target_role: string; provider_specialty?: string | null; provider_organization?: string | null }; Returns: Record<string, unknown> };
     };
   };
 };

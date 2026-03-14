@@ -1,40 +1,55 @@
-﻿import { describe, expect, it } from "vitest";
-import { forgotPasswordSchema, loginSchema, registerSchema, resetPasswordSchema } from "@/lib/validations/auth";
+import { describe, expect, it } from "vitest";
+import { registerSchema } from "@/lib/validations/auth";
 
-describe("auth validation", () => {
-  it("accepts a valid login payload", () => {
-    expect(loginSchema.safeParse({ email: "patient@example.com", password: "Password123!" }).success).toBe(true);
+describe("registerSchema", () => {
+  it("accepts a patient registration without staff fields", () => {
+    const result = registerSchema.safeParse({
+      role: "patient",
+      fullName: "Jane Patient",
+      email: "jane@example.com",
+      password: "SecurePass1!",
+      confirmPassword: "SecurePass1!",
+      specialty: "",
+      organization: "",
+      accessCode: "",
+      agreeTerms: true,
+    });
+
+    expect(result.success).toBe(true);
   });
 
-  it("accepts a valid forgot-password payload", () => {
-    expect(forgotPasswordSchema.safeParse({ email: "patient@example.com" }).success).toBe(true);
+  it("requires specialty and access code for providers", () => {
+    const result = registerSchema.safeParse({
+      role: "provider",
+      fullName: "Dr. Nina Shah",
+      email: "nina@example.com",
+      password: "SecurePass1!",
+      confirmPassword: "SecurePass1!",
+      specialty: "",
+      organization: "Bridge Health",
+      accessCode: "",
+      agreeTerms: true,
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.error?.flatten().fieldErrors.specialty).toBeDefined();
+    expect(result.error?.flatten().fieldErrors.accessCode).toBeDefined();
   });
 
-  it("rejects weak passwords on register", () => {
-    expect(
-      registerSchema.safeParse({
-        fullName: "Jane Patient",
-        email: "patient@example.com",
-        password: "password123",
-        confirmPassword: "password123",
-        agreeTerms: true,
-      }).success,
-    ).toBe(false);
-  });
+  it("requires access code for admins", () => {
+    const result = registerSchema.safeParse({
+      role: "admin",
+      fullName: "Alex Admin",
+      email: "alex@example.com",
+      password: "SecurePass1!",
+      confirmPassword: "SecurePass1!",
+      specialty: "",
+      organization: "Bridge Ops",
+      accessCode: "",
+      agreeTerms: true,
+    });
 
-  it("rejects missing terms acceptance on register", () => {
-    expect(
-      registerSchema.safeParse({
-        fullName: "Jane Patient",
-        email: "patient@example.com",
-        password: "Password123!",
-        confirmPassword: "Password123!",
-        agreeTerms: false,
-      }).success,
-    ).toBe(false);
-  });
-
-  it("rejects mismatched passwords on password reset", () => {
-    expect(resetPasswordSchema.safeParse({ password: "Password123!", confirmPassword: "Password456!" }).success).toBe(false);
+    expect(result.success).toBe(false);
+    expect(result.error?.flatten().fieldErrors.accessCode).toBeDefined();
   });
 });

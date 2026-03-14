@@ -1,9 +1,9 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import {
@@ -12,6 +12,8 @@ import {
   requestPasswordResetAction,
   updatePasswordAction,
 } from "@/lib/actions/auth";
+import { registrationRoleOptions } from "@/lib/auth/onboarding-config";
+import { cn } from "@/lib/utils";
 import {
   forgotPasswordSchema,
   loginSchema,
@@ -60,7 +62,7 @@ export function LoginForm() {
       <Input label="Email address" type="email" placeholder="you@medconnect.app" error={form.formState.errors.email?.message} {...form.register("email")} />
       <Input label="Password" type="password" placeholder="Enter your password" error={form.formState.errors.password?.message} {...form.register("password")} />
       <div className="flex items-center justify-between gap-3 text-sm">
-        <span className="text-slate-500">Supabase Auth secures your session.</span>
+        <span className="text-slate-500">Patients, providers, and admins share the same secure sign-in.</span>
         <Link href="/forgot-password" className="text-cyan-300 transition hover:text-cyan-200">Forgot password?</Link>
       </div>
       <FormError message={formError} />
@@ -77,8 +79,19 @@ export function RegisterForm() {
   const [isPending, startTransition] = useTransition();
   const form = useForm<RegisterInput>({
     resolver: zodResolver(registerSchema),
-    defaultValues: { fullName: "", email: "", password: "", confirmPassword: "", agreeTerms: true },
+    defaultValues: {
+      role: "patient",
+      fullName: "",
+      email: "",
+      password: "",
+      confirmPassword: "",
+      specialty: "",
+      organization: "",
+      accessCode: "",
+      agreeTerms: true,
+    },
   });
+  const role = useWatch({ control: form.control, name: "role" });
 
   const onSubmit = (values: RegisterInput) => {
     setFormError(undefined);
@@ -97,19 +110,54 @@ export function RegisterForm() {
 
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4">
-      <Input label="Full name" placeholder="Jane Patient" error={form.formState.errors.fullName?.message} {...form.register("fullName")} />
-      <Input label="Email address" type="email" placeholder="jane@medconnect.app" error={form.formState.errors.email?.message} {...form.register("email")} />
+      <div className="grid gap-2">
+        <p className="text-sm text-slate-200">Account role</p>
+        <div className="grid gap-3 sm:grid-cols-3">
+          {registrationRoleOptions.map((option) => (
+            <label
+              key={option.value}
+              className={cn(
+                "cursor-pointer rounded-2xl border px-4 py-4 text-sm transition",
+                role === option.value
+                  ? "border-cyan-400/50 bg-cyan-400/10 text-white"
+                  : "border-white/10 bg-white/5 text-slate-300 hover:border-white/20 hover:text-white",
+              )}
+            >
+              <input type="radio" value={option.value} className="sr-only" {...form.register("role")} />
+              <span className="block font-medium">{option.label}</span>
+              <span className="mt-2 block text-xs leading-5 text-slate-400">{option.description}</span>
+            </label>
+          ))}
+        </div>
+        <FormError message={form.formState.errors.role?.message} />
+      </div>
+
+      <Input label="Full name" placeholder={role === "provider" ? "Dr. Nina Shah" : role === "admin" ? "Alex Admin" : "Jane Patient"} error={form.formState.errors.fullName?.message} {...form.register("fullName")} />
+      <Input label="Email address" type="email" placeholder="you@medconnect.app" error={form.formState.errors.email?.message} {...form.register("email")} />
+
+      {role === "provider" ? (
+        <Input label="Clinical specialty" placeholder="Cardiology" error={form.formState.errors.specialty?.message} {...form.register("specialty")} />
+      ) : null}
+
+      {role !== "patient" ? (
+        <>
+          <Input label="Organization" placeholder="Bridge Health System" error={form.formState.errors.organization?.message} {...form.register("organization")} />
+          <Input label={`${role === "provider" ? "Provider" : "Admin"} access code`} type="password" placeholder="Enter the staff onboarding code" error={form.formState.errors.accessCode?.message} {...form.register("accessCode")} />
+          <p className="-mt-2 text-xs text-slate-500">Staff roles are protected with onboarding codes in this demo. Use invite-based provisioning in production.</p>
+        </>
+      ) : null}
+
       <Input label="Password" type="password" placeholder="Create a strong password" error={form.formState.errors.password?.message} {...form.register("password")} />
       <p className="-mt-2 text-xs text-slate-500">Use at least 10 characters with an uppercase letter, number, and special character.</p>
       <Input label="Confirm password" type="password" placeholder="Confirm your password" error={form.formState.errors.confirmPassword?.message} {...form.register("confirmPassword")} />
       <label className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-200">
         <input type="checkbox" className="mt-1 h-4 w-4 rounded border-white/20 bg-slate-950" {...form.register("agreeTerms")} />
-        <span>I agree to the Terms of Use and HIPAA notice for this patient-portal demo.</span>
+        <span>I agree to the Terms of Use and HIPAA notice for this healthcare-interoperability demo.</span>
       </label>
       <FormError message={form.formState.errors.agreeTerms?.message} />
       <FormError message={formError} />
       <button type="submit" disabled={isPending} className="rounded-2xl bg-emerald-400 px-4 py-3 font-medium text-slate-950 transition hover:bg-emerald-300 disabled:opacity-60">
-        {isPending ? "Creating account..." : "Create account"}
+        {isPending ? "Creating account..." : `Create ${role} account`}
       </button>
     </form>
   );

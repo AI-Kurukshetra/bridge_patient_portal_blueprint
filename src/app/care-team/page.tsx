@@ -26,36 +26,46 @@ export default async function CareTeamPage() {
     );
   }
 
-  const [appointmentsRes, labsRes, messagesRes, directory] = await Promise.all([
+  const [appointmentsRes, labsRes, directory] = await Promise.all([
     supabase.from("appointments").select("*").eq("provider_id", provider.id).order("scheduled_at"),
     supabase.from("lab_results").select("*").eq("provider_id", provider.id).order("observed_at", { ascending: false }),
-    supabase.from("messages").select("*").eq("sender_id", auth.userId).order("created_at", { ascending: false }),
     getProviderPatientDirectory(),
   ]);
 
   const appointments = appointmentsRes.data ?? [];
   const labs = labsRes.data ?? [];
-  const recentMessages = messagesRes.data ?? [];
-  const upcoming = appointments.filter((item) => new Date(item.scheduled_at) > new Date()).length;
+  const upcoming = appointments.filter((item) => new Date(item.scheduled_at) > new Date() && item.status !== "cancelled").length;
+  const pendingConfirmations = appointments.filter((item) => item.status === "scheduled").length;
   const trackedPatients = directory.patients.slice(0, 4);
+  const patientNameById = new Map(
+    directory.patients.map((entry) => [entry.patient.id, entry.profile?.full_name ?? entry.patient.patient_mrn]),
+  );
 
   return (
     <PortalShell profileName={auth.profile.full_name} roleLabel={getRoleLabel(auth.role)} subtitle="Care team workspace" variant="provider">
       <div className="grid gap-6">
         <div className="grid gap-4 md:grid-cols-3">
           <StatCard label="Upcoming appointments" value={String(upcoming)} detail="Visits assigned to this provider" />
+          <StatCard label="Needs confirmation" value={String(pendingConfirmations)} detail="Scheduled visits awaiting provider action" />
           <StatCard label="Lab observations" value={String(labs.length)} detail="Recent observations attached to your panels" />
-          <StatCard label="Messages sent" value={String(recentMessages.length)} detail="Secure communication activity" />
         </div>
         <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
-          <SectionCard title="Next appointments" description="Provider view of assigned schedule.">
-            <div className="grid gap-3">
-              {appointments.slice(0, 5).map((item) => (
-                <div key={item.id} className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                  <div className="flex items-center justify-between gap-3"><p className="font-medium text-white">{item.reason}</p><StatusBadge value={item.status} /></div>
-                  <p className="mt-2 text-sm text-slate-300">{formatDateTime(item.scheduled_at)}</p>
-                </div>
-              ))}
+          <SectionCard title="Next appointments" description="Open the full schedule to confirm, complete, or cancel visits.">
+            {appointments.length === 0 ? (
+              <EmptyState title="No appointments assigned" body="Assigned visits will appear here once patients schedule with this provider." />
+            ) : (
+              <div className="grid gap-3">
+                {appointments.slice(0, 5).map((item) => (
+                  <div key={item.id} className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <div className="flex items-center justify-between gap-3"><p className="font-medium text-white">{item.reason}</p><StatusBadge value={item.status} /></div>
+                    <p className="mt-2 text-sm text-slate-300">{formatDateTime(item.scheduled_at)}</p>
+                    <p className="mt-1 text-sm text-slate-500">{patientNameById.get(item.patient_id) ?? "Assigned patient"}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="mt-4">
+              <Link href="/care-team/appointments" className="text-sm text-cyan-200 transition hover:text-cyan-100">Manage full appointment schedule</Link>
             </div>
           </SectionCard>
           <SectionCard title="Role authorization" description="This workspace is restricted to provider accounts.">
@@ -80,8 +90,9 @@ export default async function CareTeamPage() {
               ))}
             </div>
           )}
-          <div className="mt-4">
-            <Link href="/care-team/patients" className="text-sm text-cyan-200 transition hover:text-cyan-100">Open full patient chart directory</Link>
+          <div className="mt-4 flex flex-wrap gap-4 text-sm">
+            <Link href="/care-team/patients" className="text-cyan-200 transition hover:text-cyan-100">Open full patient chart directory</Link>
+            <Link href="/care-team/appointments" className="text-cyan-200 transition hover:text-cyan-100">Open provider appointment schedule</Link>
           </div>
         </SectionCard>
       </div>

@@ -1,9 +1,10 @@
-﻿"use server";
+"use server";
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { type ActionResult, getAppUrl } from "@/lib/utils";
 import { getDefaultRouteForRole, normalizeRole } from "@/lib/auth/roles";
+import { syncAuthenticatedAccountRole, validateRegistrationAccessCode } from "@/lib/auth/onboarding";
 import {
   forgotPasswordSchema,
   loginSchema,
@@ -39,14 +40,17 @@ export async function loginAction(payload: LoginInput): Promise<ActionResult<{ r
     ? await supabase.from("profiles").select("role").eq("id", user.id).single()
     : { data: null };
 
-  const role = normalizeRole(profile?.role);
-  if (role === "patient") {
-    await supabase.rpc("seed_demo_data_for_current_user");
+  const synchronized = await syncAuthenticatedAccountRole(supabase, normalizeRole(profile?.role));
+  if (!synchronized) {
+    return { error: { _form: ["Signed in, but the account session could not be restored."] } };
   }
 
-  const redirectTo = getDefaultRouteForRole(role);
+  if (synchronized.error) {
+    return { error: { _form: [synchronized.error] } };
+  }
+
   revalidatePath("/", "layout");
-  return { success: true, data: { redirectTo } };
+  return { success: true, data: { redirectTo: synchronized.redirectTo } };
 }
 
 export async function registerAction(payload: RegisterInput): Promise<ActionResult<{ redirectTo: string }>> {
@@ -55,6 +59,12 @@ export async function registerAction(payload: RegisterInput): Promise<ActionResu
     return { error: parsed.error.flatten().fieldErrors };
   }
 
+  const accessCodeError = validateRegistrationAccessCode(parsed.data.role, parsed.data.accessCode);
+  if (accessCodeError) {
+    return { error: { _form: [accessCodeError] } };
+  }
+
+  const requestedRedirect = getDefaultRouteForRole(parsed.data.role);
   const supabase = await createClient();
   const { error, data } = await supabase.auth.signUp({
     email: parsed.data.email,
@@ -62,8 +72,12 @@ export async function registerAction(payload: RegisterInput): Promise<ActionResu
     options: {
       data: {
         full_name: parsed.data.fullName,
+        requested_role: parsed.data.role,
+        provider_specialty: parsed.data.specialty || null,
+        provider_organization: parsed.data.organization || null,
+        staff_registration_verified: parsed.data.role === "patient" ? false : true,
       },
-      emailRedirectTo: `${getAppUrl()}/auth/callback?next=/dashboard`,
+      emailRedirectTo: `${getAppUrl()}/auth/callback?next=${requestedRedirect}`,
     },
   });
 
@@ -72,15 +86,27 @@ export async function registerAction(payload: RegisterInput): Promise<ActionResu
   }
 
   if (data.session) {
-    await supabase.rpc("seed_demo_data_for_current_user");
+    const synchronized = await syncAuthenticatedAccountRole(supabase, parsed.data.role);
+    if (!synchronized || synchronized.error) {
+      return { error: { _form: [synchronized?.error ?? "Account created, but role provisioning failed."] } };
+    }
+
+    revalidatePath("/", "layout");
+    return {
+      success: true,
+      data: { redirectTo: synchronized.redirectTo },
+      message: parsed.data.role === "patient"
+        ? "Patient account created. Redirecting to your portal."
+        : `Staff account created. Redirecting to the ${parsed.data.role} workspace.`,
+    };
   }
 
-  revalidatePath("/dashboard", "layout");
+  revalidatePath("/", "layout");
   return {
     success: true,
-    data: { redirectTo: data.session ? "/dashboard" : "/login" },
-    message: data.session
-      ? "Account created. Redirecting to your portal."
+    data: { redirectTo: "/login" },
+    message: data.user
+      ? `Account created. Check your email to confirm access to the ${parsed.data.role} workspace.`
       : "Account created. Check your email to confirm your account.",
   };
 }

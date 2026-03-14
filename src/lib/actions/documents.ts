@@ -1,6 +1,7 @@
 ﻿"use server";
 
 import { revalidatePath } from "next/cache";
+import { appendPortalEvent, getCurrentUserPatient } from "@/lib/actions/activity";
 import { createClient } from "@/lib/supabase/server";
 import { type ActionResult } from "@/lib/utils";
 import { documentSchema, type DocumentInput } from "@/lib/validations/document";
@@ -12,31 +13,38 @@ export async function createDocumentAction(payload: DocumentInput): Promise<Acti
   }
 
   const supabase = await createClient();
-  const { data: authData } = await supabase.auth.getUser();
-  const user = authData.user;
+  const { patientId, user } = await getCurrentUserPatient(supabase);
   if (!user) {
     return { error: { _form: ["Unauthorized"] } };
   }
 
-  const { data: patient } = await supabase.from("patients").select("id").eq("profile_id", user.id).single();
-  if (!patient) {
+  if (!patientId) {
     return { error: { _form: ["Patient record not found"] } };
   }
 
   const { error } = await supabase.from("documents").insert({
-    patient_id: patient.id,
-    uploaded_by: user.id,
-    title: parsed.data.title,
     category: parsed.data.category,
-    storage_path: parsed.data.storagePath,
-    mime_type: parsed.data.mimeType || null,
     file_size: parsed.data.fileSize ?? null,
+    mime_type: parsed.data.mimeType || null,
+    patient_id: patientId,
+    storage_path: parsed.data.storagePath,
+    title: parsed.data.title,
+    uploaded_by: user.id,
   });
 
   if (error) {
     return { error: { _form: [error.message] } };
   }
 
+  await appendPortalEvent(supabase, user.id, {
+    actionHref: "/documents",
+    detail: `${parsed.data.title} was uploaded to your secure records vault.`,
+    title: "Document uploaded",
+    type: "document",
+  });
+
   revalidatePath("/documents");
+  revalidatePath("/dashboard");
+  revalidatePath("/notifications");
   return { success: true, message: "Document uploaded" };
 }

@@ -48,6 +48,12 @@ export async function getPortalData(): Promise<PortalData | null> {
     supabase.from("recent_activities").select("*").eq("profile_id", user.id).order("occurred_at", { ascending: false }),
   ]);
 
+  const { data: participantRows } = await supabase
+    .from("conversation_participants")
+    .select("conversation_id")
+    .eq("profile_id", user.id);
+  const conversationIds = [...new Set((participantRows ?? []).map((row) => row.conversation_id))];
+
   if (!patient) {
     return {
       profile: profile ?? null,
@@ -81,8 +87,12 @@ export async function getPortalData(): Promise<PortalData | null> {
     supabase.from("documents").select("*").eq("patient_id", patientId).order("created_at", { ascending: false }),
     supabase.from("invoices").select("*").eq("patient_id", patientId).order("issued_at", { ascending: false }),
     supabase.from("payments").select("*").eq("patient_id", patientId).order("processed_at", { ascending: false }),
-    supabase.from("conversations").select("*").order("updated_at", { ascending: false }),
-    supabase.from("messages").select("*").order("created_at"),
+    conversationIds.length > 0
+      ? supabase.from("conversations").select("*").in("id", conversationIds).order("updated_at", { ascending: false })
+      : Promise.resolve({ data: [] }),
+    conversationIds.length > 0
+      ? supabase.from("messages").select("*").in("conversation_id", conversationIds).order("created_at")
+      : Promise.resolve({ data: [] }),
   ]);
 
   const messages = messagesRes.data ?? [];

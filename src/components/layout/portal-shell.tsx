@@ -17,6 +17,7 @@ const patientNavItems: NavItem[] = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
   { href: "/profile", label: "Profile", icon: UserRound },
   { href: "/records", label: "Health records", icon: ShieldCheck },
+  { href: "/care-team-directory", label: "Care team", icon: UsersRound },
   { href: "/appointments", label: "Appointments", icon: CalendarDays },
   { href: "/lab-results", label: "Lab results", icon: FlaskConical },
   { href: "/prescriptions", label: "Prescriptions", icon: Pill },

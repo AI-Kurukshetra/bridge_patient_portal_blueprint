@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -29,6 +29,7 @@ const patientNavItems: NavItem[] = [
 
 const providerNavItems: NavItem[] = [
   { href: "/care-team", label: "Care Team Home", icon: UsersRound },
+  { href: "/care-team/patients", label: "Patient Charts", icon: ShieldCheck },
   { href: "/notifications", label: "Notifications", icon: Bell },
 ];
 
@@ -63,7 +64,7 @@ function SidebarContent({ close, pathname, subtitle, variant }: { close?: () => 
       <nav className="mt-8 grid gap-2">
         {navItems.map((item) => {
           const Icon = item.icon;
-          const active = pathname === item.href;
+          const active = pathname === item.href || (item.href !== "/care-team" && pathname.startsWith(`${item.href}/`));
           return (
             <Link
               key={item.href}
